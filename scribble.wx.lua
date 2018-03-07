@@ -45,7 +45,8 @@ penStyleNames  = { "Solid style", "Dotted style", "Long dashed style", "Short da
                    "Vertical hatch" }
 
 screenWidth, screenHeight = wx.wxDisplaySize()
-bitmap = wx.wxBitmap(screenWidth, screenHeight)
+windowWidth = screenWidth/2; windowHeight = screenHeight/2
+bitmap = wx.wxBitmap(windowWidth, windowHeight)
 
 -- ---------------------------------------------------------------------------
 -- Pen to table and back functions
@@ -69,9 +70,9 @@ end
 -- Drawing functions
 -- ---------------------------------------------------------------------------
 function DrawPoints(drawDC)
-    if lastDrawn == 0 then
-        drawDC:Clear()
-    end
+    -- if lastDrawn == 0 then
+    --     drawDC:Clear()
+    -- end
 
     local start_index = 1
     if lastDrawn > 1 then start_index = lastDrawn end
@@ -115,14 +116,15 @@ function DrawLastPoint(drawDC)
     end
 end
 
-function DrawBitmap(bmp)
-    local memDC = wx.wxMemoryDC()       -- create off screen dc to draw on
-    memDC:SelectObject(bmp)             -- select our bitmap to draw into
+function DrawBitmapWithPoints(bmp)
 
-    DrawPoints(memDC)
+	 local memDC = wx.wxMemoryDC()       -- create off screen dc to draw on
+	 memDC:SelectObject(bmp)             -- select our bitmap to draw into
 
-    memDC:SelectObject(wx.wxNullBitmap) -- always release bitmap
-    memDC:delete() -- ALWAYS delete() any wxDCs created when done
+	 DrawPoints(memDC)
+
+	 memDC:SelectObject(wx.wxNullBitmap) -- always release bitmap
+	 memDC:delete() -- ALWAYS delete() any wxDCs created when done
 end
 
 function OnPaint(event)
@@ -131,21 +133,20 @@ function OnPaint(event)
 
     if bitmap and bitmap:Ok() then
         if redrawRequired then
-            DrawBitmap(bitmap)
-            redrawRequired = false
+					 DrawBitmapWithPoints(bitmap)
+					 dc:DrawBitmap(bitmap, 0, 0, false)
+					 redrawRequired = false
         end
-
-        dc:DrawBitmap(bitmap, 0, 0, false)
     end
 
     dc:delete() -- ALWAYS delete() any wxDCs created when done
 end
 
-function GetBitmap()
+function GetBitmapFromPoints()
     local w, h = panel:GetClientSizeWH()
     local bmp = wx.wxBitmap(w, h)
     lastDrawn = 0 -- force redrawing all points
-    DrawBitmap(bmp)
+    DrawBitmapWithPoints(bmp)
     lastDrawn = 0 -- force redrawing all points
     return bmp
 end
@@ -219,9 +220,18 @@ function QuerySaveChanges()
 end
 
 function LoadScribbles(fileName)
-    pointsList = {}
-    lastDrawn = 0
-    return ((pcall(dofile, fileName)) ~= nil)
+	 pointsList = {}
+	 lastDrawn = 0
+	 local image = wx.wxImage(wx.wxString(fileName))
+	 if image and image:Ok() then
+	    bitmap = wx.wxBitmap(image)
+			image:Destroy()
+
+			if bitmap and bitmap:Ok() then
+				 return true
+			end
+	 end
+	 return false
 end
 
 -- modified from the lua sample save.lua
@@ -263,17 +273,19 @@ end
 
 function Open()
     local fileDialog = wx.wxFileDialog(frame,
-                                       "Open wxLua scribble file",
+                                       "Open image file",
                                        "",
                                        "",
-                                       "Scribble files(*.scribble)|*.scribble|All files(*)|*",
+                                       "PNG file(*.png)|*.png",
                                        wx.wxFD_OPEN + wx.wxFD_FILE_MUST_EXIST)
     local result = false
     if fileDialog:ShowModal() == wx.wxID_OK then
         fileName = fileDialog:GetPath()
         result = LoadScribbles(fileName)
         if result then
-            frame:SetTitle("wxLua Scribble - " .. fileName)
+					 frame:SetTitle("wxLua image - " .. fileName)
+					 -- scrollwin:SetClientSize(windowWidth/2, windowHeight/2)
+
         end
     end
     fileDialog:Destroy()
@@ -346,7 +358,7 @@ end
 
 function main()
     frame = wx.wxFrame( wx.NULL, wx.wxID_ANY, "wxLua Scribble",
-                        wx.wxDefaultPosition, wx.wxSize(450, 450),
+                        wx.wxDefaultPosition, wx.wxSize(windowWidth, windowHeight),
                         wx.wxDEFAULT_FRAME_STYLE )
 
     -- -----------------------------------------------------------------------
@@ -586,7 +598,7 @@ function main()
                                        "PNG (*.png)|*.png|PCX (*.pcx)|*.pcx|Bitmap (*.bmp)|*.bmp|Jpeg (*.jpg,*.jpeg)|*.jpg,*.jpeg|Tiff (*.tif,*.tiff)|*.tif,*.tiff",
                                        wx.wxFD_SAVE + wx.wxFD_OVERWRITE_PROMPT)
                 if fileDialog:ShowModal() == wx.wxID_OK then
-                    local bmp = GetBitmap()
+                    local bmp = GetBitmapFromPoints()
                     local img = bmp:ConvertToImage()
                     if not img:SaveFile(fileDialog:GetPath()) then
                         wx.wxMessageBox("There was a problem saving the image file\n"..fileDialog:GetPath(),
@@ -661,7 +673,7 @@ function main()
             function (event)
                 local clipBoard = wx.wxClipboard.Get()
                 if clipBoard and clipBoard:Open() then
-                    local bmp = GetBitmap()
+                    local bmp = GetBitmapFromPoints()
                     clipBoard:SetData(wx.wxBitmapDataObject(bmp))
                     bmp:delete()
 
