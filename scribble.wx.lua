@@ -12,8 +12,12 @@
 
 -- Load the wxLua module, does nothing if running from wxLua, wxLuaFreeze, or wxLuaEdit
 -- package.cpath = package.cpath..";./?.dll;./?.so;../lib/?.so;../lib/vc_dll/?.dll;../lib/bcc_dll/?.dll;../lib/mingw_dll/?.dll;"
-package.cpath = package.cpath..';'..'/home/ron/git/wxlua/wxLua/lib/Debug/lib?.so'
+package.cpath = package.cpath..';'..'/home/ron/git/wxlua/wxLua/lib/Release/lib?.so'
+package.cpath = package.cpath..';'..'/home/ron/studies/project/PatchMatch/lib?.so'
 require("wx")
+require("os")
+require 'torch'
+luainpaint = require("luainpaint")
 
 frame          = nil   -- the main wxFrame
 scrollwin      = nil   -- the child of the frame
@@ -48,12 +52,40 @@ screenWidth, screenHeight = wx.wxDisplaySize()
 windowWidth = screenWidth/2; windowHeight = screenHeight/2
 bitmap = wx.wxBitmap(windowWidth, windowHeight)
 
+-- require 'nn'
+-- require 'dpnn'
+
+-- NN = torch.load('/home/ron/studies/project/texture2vec/training/model_650.t7')
+
+-- function create_tensor_from_image_storage(storage, H, W, num_channels)
+-- 	 local t = torch.ByteTensor(storage):float()/255
+-- 	 t = t:view(num_channels, H, W)
+-- 	 t = t:transpose(2,3):transpose(1,2)
+-- 	 t = t:contiguous()
+-- 	 -- Adding 1 to fit to the NN input dimensions
+-- 	 t = t:view(1, num_channels, H, W)
+-- 	 return t
+-- end
+
+-- function compute_patches_distance_NN(patch1_storage_obj, patch2_storage_obj, H, W, num_channels)
+-- 	 local patch1 = create_tensor_from_image_storage(patch1_storage_obj, H, W, num_channels)
+-- 	 local patch2 = create_tensor_from_image_storage(patch2_storage_obj, H, W, num_channels)
+-- 	 local v1 = NN:forward(patch1):clone()
+-- 	 local v2 = NN:forward(patch2):clone()
+-- 	 -- Distance is 1-similarity
+-- 	 local distance = 1-v1*v2
+-- 	 -- print(string.format("Calculated distance = %f", distance))
+-- 	 return distance
+-- end
+
+
 -- ---------------------------------------------------------------------------
 -- Pen to table and back functions
 -- ---------------------------------------------------------------------------
 function PenToTable(pen)
     local c = pen:GetColour()
-    local t = { colour = { c:Red(), c:Green(), c:Blue() }, width = pen:GetWidth(), style = pen:GetStyle() }
+    -- local t = { colour = { c:Red(), c:Green(), c:Blue() }, width = pen:GetWidth(), style = pen:GetStyle() }
+		local t = { colour = { 255, 255, 255 }, width = pen:GetWidth(), style = pen:GetStyle() }
     c:delete()
     return t
 end
@@ -97,7 +129,7 @@ function DrawPoints(drawDC)
     end
 
     lastDrawn = #pointsList
-    drawDC:SetPen(wx.wxNullPen)
+    drawDC:SetPen(wx.wxWHITE_PEN)
 end
 
 function DrawLastPoint(drawDC)
@@ -116,10 +148,15 @@ function DrawLastPoint(drawDC)
     end
 end
 
-function DrawBitmapWithPoints(bmp)
+function DrawBitmapWithPoints(bmp, should_clear)
 
 	 local memDC = wx.wxMemoryDC()       -- create off screen dc to draw on
 	 memDC:SelectObject(bmp)             -- select our bitmap to draw into
+	 should_clear = should_clear or false
+	 if (should_clear) then
+			memDC:SetBackground(wx.wxBLACK_BRUSH)
+			memDC:Clear()
+	 end
 
 	 DrawPoints(memDC)
 
@@ -149,6 +186,40 @@ function GetBitmapFromPoints()
     DrawBitmapWithPoints(bmp)
     lastDrawn = 0 -- force redrawing all points
     return bmp
+end
+
+
+function ImageInpaint()
+	 local mask_bitmap = wx.wxBitmap(bitmap:GetWidth(), bitmap:GetHeight(), 1)
+	 DrawBitmapWithPoints(mask_bitmap, true)
+	 local mask_tmp_filename = os.tmpname()
+	 local image_tmp_filename = os.tmpname()
+	 os.rename(mask_tmp_filename, mask_tmp_filename .. ".bmp")
+	 os.rename(image_tmp_filename, image_tmp_filename .. ".bmp")
+	 mask_tmp_filename = mask_tmp_filename  .. ".bmp"
+	 image_tmp_filename = image_tmp_filename .. ".bmp"
+	 local result = mask_bitmap:ConvertToImage():SaveFile(mask_tmp_filename)
+	 if (result) then
+			result = bitmap:ConvertToImage():SaveFile(image_tmp_filename)
+			if (not result) then
+				 print("Error! Unable to save bitmap")
+			else
+				 print("mask_tmp_filename: " .. mask_tmp_filename .. "\n" ..
+									"image_tmp_filename: " .. image_tmp_filename .. "\n")
+				 local result_file_path = luainpaint.inpaint(image_tmp_filename, mask_tmp_filename)
+				 local image = wx.wxImage(wx.wxString(result_file_path))
+				 bitmap = wx.wxBitmap(image)
+				 os.remove(mask_tmp_filename)
+				 os.remove(image_tmp_filename)
+				 pointsList = {}
+			end
+
+	 else
+			print("Error! Unable to save mask bitmap")
+	 end
+
+	 os.remove(mask_tmp_filename .. ".bmp")
+	 os.remove(image_tmp_filename .. ".bmp")
 end
 
 -- ---------------------------------------------------------------------------
@@ -285,6 +356,8 @@ function Open()
         if result then
 					 frame:SetTitle("wxLua image - " .. fileName)
 					 -- scrollwin:SetClientSize(windowWidth/2, windowHeight/2)
+					 frame:SetSize(wx.wxDefaultCoord, wx.wxDefaultCoord, wx.wxDefaultCoord,
+												 wx.wxDefaultCoord, wx.wxSIZE_AUTO)
 
         end
     end
@@ -584,9 +657,12 @@ function main()
 
     frame:Connect(wx.wxID_SAVEAS, wx.wxEVT_COMMAND_MENU_SELECTED,
             function (event)
-                if SaveAs() then
-                    isModified = false
-                end
+                -- if SaveAs() then
+                --     isModified = false
+							 -- end
+							 ImageInpaint()
+							 redrawRequired = true
+							 panel:Refresh()
             end )
 
     frame:Connect(ID_SAVEBITMAP, wx.wxEVT_COMMAND_MENU_SELECTED,
