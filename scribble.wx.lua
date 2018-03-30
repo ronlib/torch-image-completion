@@ -13,11 +13,12 @@
 -- Load the wxLua module, does nothing if running from wxLua, wxLuaFreeze, or wxLuaEdit
 -- package.cpath = package.cpath..";./?.dll;./?.so;../lib/?.so;../lib/vc_dll/?.dll;../lib/bcc_dll/?.dll;../lib/mingw_dll/?.dll;"
 package.cpath = package.cpath..';'..'/home/ron/git/wxlua/wxLua/lib/Release/lib?.so'
-package.cpath = package.cpath..';'..'/home/ron/studies/project/PatchMatch/lib?.so'
+package.cpath = package.cpath..';'..'/home/ron/studies/project/PatchMatch/lib/lib?.so'
 require("wx")
 require("os")
 require 'torch'
 luainpaint = require("luainpaint")
+patch2vec_init('model16_570.t7')
 
 frame          = nil   -- the main wxFrame
 scrollwin      = nil   -- the child of the frame
@@ -38,7 +39,7 @@ ID_PENWIDTH    = wx.wxID_HIGHEST + 4
 ID_PENSTYLE    = wx.wxID_HIGHEST + 5
 ID_PENWIDTH_SPINCTRL = wx.wxID_HIGHEST + 6
 
-currentPen     = wx.wxPen(wx.wxRED_PEN); currentPen:SetWidth(3)
+currentPen     = wx.wxPen(wx.wxRED_PEN); currentPen:SetWidth(25)
 penStyles      = { wx.wxSOLID, wx.wxDOT, wx.wxLONG_DASH, wx.wxSHORT_DASH,
                    wx.wxDOT_DASH, wx.wxBDIAGONAL_HATCH, wx.wxCROSSDIAG_HATCH,
                    wx.wxFDIAGONAL_HATCH, wx.wxCROSS_HATCH, wx.wxHORIZONTAL_HATCH,
