@@ -12,8 +12,8 @@
 
 -- Load the wxLua module, does nothing if running from wxLua, wxLuaFreeze, or wxLuaEdit
 -- package.cpath = package.cpath..";./?.dll;./?.so;../lib/?.so;../lib/vc_dll/?.dll;../lib/bcc_dll/?.dll;../lib/mingw_dll/?.dll;"
-package.cpath = package.cpath..';'..'/home/ron/git/wxlua/wxLua/lib/Release/lib?.so'
-package.cpath = package.cpath..';'..'/home/ron/studies/project/PatchMatch/lib/lib?.so'
+-- package.cpath = package.cpath..';'..'/home/ron/git/wxlua/wxLua/lib/Release/lib?.so'
+-- package.cpath = package.cpath..';'..'/home/ron/studies/project/PatchMatch/lib/lib?.so'
 require("wx")
 require("os")
 require 'torch'
