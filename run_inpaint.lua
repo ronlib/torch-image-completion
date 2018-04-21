@@ -9,6 +9,6 @@ nnluainpaint = require("libpatchmatch2")
 -- nn_ba = nnluainpaint.nn('c.bmp', 'a.bmp', 'cpu', 16, 5)
 nn_ab = nnluainpaint.nn('image.bmp', 'image.bmp', 'cpu', 16, 5)
 result_file_path = nnluainpaint.vote('image.bmp', nn_ab, nil, 'cpu', 16,
-																		 'mask.bmp', nil, nil, nil, nil,
-																		 'mask.bmp')
+																		 'mask_inv.bmp', nil, nil, nil, nil,
+																		 'mask_inv.bmp')
 print("Result file path: " .. result_file_path)
