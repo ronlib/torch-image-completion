@@ -1,9 +1,10 @@
 require("wx")
 require("os")
 require 'torch'
+require 'patch2vec'
 -- luainpaint = require("luainpaint")
 nnluainpaint = require("libpatchmatch2")
--- patch2vec_init('model16_570.t7')
+patch2vec_init('model16_570.t7')
 -- result_file_path = luainpaint.inpaint('image.bmp', 'mask.bmp')
 -- nn_ab = nnluainpaint.nn('a.bmp', 'c.bmp', 'cpu', 16, 5)
 -- nn_ba = nnluainpaint.nn('c.bmp', 'a.bmp', 'cpu', 16, 5)
