@@ -1,4 +1,4 @@
-require("wx")
+-- require("wx")
 require("os")
 require 'torch'
 require 'patch2vec'
